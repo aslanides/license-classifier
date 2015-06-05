@@ -1,0 +1,2351 @@
+#LyX 2.1 created this file. For more info see http://www.lyx.org/
+\lyxformat 474
+\begin_document
+\begin_header
+\textclass article
+\begin_preamble
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows}
+\usepackage{tocloft}
+\end_preamble
+\use_default_options true
+\begin_modules
+theorems-ams
+\end_modules
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman default
+\font_sans default
+\font_typewriter default
+\font_math auto
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100
+\font_tt_scale 100
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\spacing single
+\use_hyperref false
+\papersize default
+\use_geometry true
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 1
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\leftmargin 2cm
+\topmargin 2cm
+\rightmargin 2cm
+\bottommargin 2cm
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Title
+ENGN6528 - Computer Vision: Term Project
+\end_layout
+
+\begin_layout Author
+John Aslanides
+\end_layout
+
+\begin_layout Abstract
+We present a simple license plate recognition system which uses morphology-based
+ segmentation, and artificial neural network-based recognition.
+ The system achieves a license plate recognition rate of 75% on typical
+ cropped Australian license plate images.
+ We propose several methods to improve the classification rate.
+\end_layout
+
+\begin_layout Standard
+\begin_inset FormulaMacro
+\newcommand{\b}[1]{\boldsymbol{#1}}
+{\boldsymbol{#1}}
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Introduction
+\end_layout
+
+\begin_layout Standard
+Automated license plate recognition is an important application of computer
+ vision that is useful in numerous settings, including traffic data collection,
+ law enforcement, motorway toll collection, and managing parking lots 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Nijhuis-95"
+
+\end_inset
+
+.
+ A system with the capability to robustly and accurately recognise license
+ plates from various jurisdictions can be of great value when applyed to
+ any of the above tasks; for this reason there has been significant research
+ and development in this area in the past two decades 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Bailmare-13"
+
+\end_inset
+
+.
+ The most typical license plate recognition system involves three steps
+ 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Ozturk-2012"
+
+\end_inset
+
+: 
+\end_layout
+
+\begin_layout Enumerate
+localising a license plate within a cluttered scene, possibly containing
+ more than one car,
+\end_layout
+
+\begin_layout Enumerate
+segmenting the license plate into its constituent glyphs, and 
+\end_layout
+
+\begin_layout Enumerate
+performing optical character recognition (OCR) on these glyphs to obtain
+ the license plate string.
+ 
+\end_layout
+
+\begin_layout Standard
+The problem we will be solving with our system consists of steps (2) and
+ (3); that is, the images we will be dealing with consist of cropped license
+ plates, and the task is to output a string corresponding to the correct
+ license plate.
+\end_layout
+
+\begin_layout Section
+Background
+\end_layout
+
+\begin_layout Standard
+There has been considerable ongoing research in the area of license plate
+ recognition over the last twenty years, with a rich literature exploring
+ different ideas and techniques.
+ Below we provide some background on these techniques, concentrating on
+ segmentation and recognition (we assume that license plate localisation
+ and rectification has already been performed).
+ We also provide a brief review of the theory of neural networks.
+\end_layout
+
+\begin_layout Subsection
+License Plate Segmentation
+\end_layout
+
+\begin_layout Standard
+There are many difficulties in license plate character segmentation.
+ Some of these include: image noise, plate frame occlusion, presence of
+ bolts or rivets, and extraneous slogans and images on the license plate.
+ There are numerous approaches to dealing with these in the literature;
+ these include segmentation based on the Hough transform 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Zhang-03"
+
+\end_inset
+
+, projection histograms 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Hegt-98"
+
+\end_inset
+
+, clustering 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Zheng-2011"
+
+\end_inset
+
+, template matching 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Pan-2008"
+
+\end_inset
+
+, and morphology 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Karthikeyan-13"
+
+\end_inset
+
+.
+ The choice of segmentation technique seems to be largely a matter of taste;
+ no single technique explored in the literature dominates the others in
+ terms of performance; in one review study that compared numerous techniques,
+ a variation in performance of less than 5% was recorded 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Karthikeyan-13"
+
+\end_inset
+
+.
+ For this reason, there is no true `state of the art' method, just a collection
+ of different techniques with their own advantages and disadvantages.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement h
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename Figures/hor_proj.pdf
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename Figures/vert-proj.pdf
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+An example of the projection histogram technique.
+ Troughs in the histogram correspond to gaps between symbols 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Karthikeyan-13"
+
+\end_inset
+
+.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+License Plate Recognition
+\end_layout
+
+\begin_layout Standard
+Once the license plate characters have been segmented, the problem essentially
+ reduces to the standard OCR problem: given an image of a character represented
+ in the pixel domain, to recognise the character.
+ Again, there are numerous approaches to this problem in the license plate
+ context; these include `classical' methods such as template matching and
+ the Hotelling transform 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Hegt-98"
+
+\end_inset
+
+, and learning based methods such as support vector machines (SVM) and neural
+ networks 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "akoum-2009,bhushan-2013,carrera-2009,ZhengHao-2014"
+
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Subsection
+Artificial Neural Networks
+\end_layout
+
+\begin_layout Standard
+Artificial neural networks (ANNs) are a powerful tool for classification
+ and function approximation, which have been effective in many diverse domains
+ and settings
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+For an interesting overview of recurrent neural networks and their uses,
+ see `The Unreasonable Effectiveness of Recurrent Neural Networks' at http://kar
+pathy.github.io/2015/05/21/rnn-effectiveness/.
+\end_layout
+
+\end_inset
+
+.
+ Algorithms that employ neural networks are the state of the art in many
+ domains, including handwriting and character recognition 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "lecun-98"
+
+\end_inset
+
+.
+ The setup of a feed-forward neural network is as follows.
+ The network is composed of layers of `neurons', which each take as input
+ a linear combination of the outputs of the previous layer, and apply a
+ nonlinear activation function to this input:
+\begin_inset Formula 
+\[
+a_{j}^{\left(i\right)}=\sigma\left(\sum_{k=1}^{N_{i-1}}w_{ij}^{\left(i-1\right)}a_{k}^{\left(i-1\right)}\right).
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Here we define 
+\begin_inset Formula $a_{j}^{\left(i\right)}$
+\end_inset
+
+ as the output of neuron 
+\begin_inset Formula $j$
+\end_inset
+
+ in layer 
+\begin_inset Formula $i$
+\end_inset
+
+, the 
+\begin_inset Formula $w_{ij}^{\left(i-1\right)}$
+\end_inset
+
+ are the weights joining layers 
+\begin_inset Formula $i-1$
+\end_inset
+
+ and 
+\begin_inset Formula $i$
+\end_inset
+
+, and 
+\begin_inset Formula $\sigma$
+\end_inset
+
+ is the nonlinear activation function, which is typically the logistic sigmoid:
+\begin_inset Formula 
+\[
+\sigma\left(x\right)=\frac{1}{1+e^{-x}}.
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Note that in the typical setup, each layer is fully connected to its adjacent
+ layers.
+ The first layer is the input data, and the last layer is the output (correspond
+ing to a class, or regression, depending on the setting).
+ Intermediate layers are called `hidden layers', and these can be thought
+ of as learning intermediate basis functions or representations for the
+ data.
+ Considered layer-by-layer, a neural network comprises an iterated series
+ of generalised linear models.
+ The entire 
+\begin_inset Formula $L$
+\end_inset
+
+-layer network can be written down as a vector-valued function with elements
+ given by
+\begin_inset Formula 
+\[
+y_{i}\left(\b x\right)=\sigma\left(\sum_{i_{L-1}=1}^{N_{L-1}}w_{ii_{L-1}}^{\left(L-1\right)}\sigma\left(\sum_{i_{L-2}=1}^{N_{L-2}}w_{i_{L-1}i_{L-2}}^{\left(L-2\right)}\sigma\left(\dots\sigma\left(\sum_{i_{1}=1}^{N_{1}}w_{i_{2}i_{1}}^{\left(1\right)}x_{i_{1}}\right)\right)\right)\right),
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+where 
+\begin_inset Formula $w_{ij}\left(k\right)$
+\end_inset
+
+ is the weight between unit 
+\begin_inset Formula $i$
+\end_inset
+
+ of layer 
+\begin_inset Formula $k-1$
+\end_inset
+
+ and unit 
+\begin_inset Formula $j$
+\end_inset
+
+ of layer 
+\begin_inset Formula $k$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+The classifier itself will simply take the index of the maximum value of
+ 
+\begin_inset Formula $\b y$
+\end_inset
+
+; this is interpreted as the class that the input 
+\begin_inset Formula $\b x$
+\end_inset
+
+ belongs to, with highest probability, according to the model implied by
+ the network.
+ Hence out classifier 
+\begin_inset Formula $C$
+\end_inset
+
+ simply takes the output of the neural network and computes the 
+\begin_inset Formula $\arg\max$
+\end_inset
+
+:
+\begin_inset Formula 
+\[
+C\left(\b x\right)=\arg\max_{i}y_{i}\left(\b x\right).
+\]
+
+\end_inset
+
+Training can then be done in conjunction with gradient descent and an appropriat
+e loss function 
+\begin_inset Formula $E$
+\end_inset
+
+ using the backpropagation algorithm, which amounts to an application of
+ the chain rule for derivatives 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "bishop-06"
+
+\end_inset
+
+: 
+\begin_inset Formula 
+\[
+\frac{\partial E}{\partial w_{ij}^{\left(l-1\right)}}=\frac{\partial a_{j}^{\left(l-1\right)}}{\partial w_{ij}^{\left(l-1\right)}}\sigma'\left(a_{j}^{\left(l\right)}\right)\sum_{k}w_{kj}^{\left(l\right)}\frac{\partial E}{\partial a_{k}^{\left(l\right)}}.
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+It is important to note that the neural network has many discrete symmetries:
+ there are a large number of permutations of the weights which leave the
+ network invariant.
+ This means that the objective function 
+\begin_inset Formula $E$
+\end_inset
+
+ is non-convex, and optimization via gradient descent methods is not guaranteed
+ to find the global minimum.
+ This is a limitation of neural networks when compared with SVMs, since
+ the optimization involved in SVM is a quadratic program, and is therefore
+ convex 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "cortes-95"
+
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename Figures/neuralnet_cartoon.pdf
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Architecture of a fully connected single hidden-layer feedforward neural
+ network.
+ The filled nodes 
+\begin_inset Formula $x_{0}$
+\end_inset
+
+ and 
+\begin_inset Formula $z_{0}$
+\end_inset
+
+ are bias terms.
+ 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Design approach
+\end_layout
+
+\begin_layout Subsection
+License Plate Segmentation
+\end_layout
+
+\begin_layout Standard
+We first take the RGB input image and convert it to greyscale by extracting
+ only the green channel.
+ We initially crop the edges
+\begin_inset Foot
+status collapsed
+
+\begin_layout Plain Layout
+We find empirically that cropping 
+\begin_inset Formula $10\%$
+\end_inset
+
+ from the top and bottom, and 
+\begin_inset Formula $3\%$
+\end_inset
+
+ from the sides is effective.
+\end_layout
+
+\end_inset
+
+, since we can be sure they don't contain any important information, and
+ they typically present a large connected component (the plate border) which
+ we want to be rid of for the following image analysis.
+ We then binarize the resulting image, determining the threshold through
+ Otsu's method
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+http://en.wikipedia.org/wiki/Otsu%27s_method.
+\end_layout
+
+\end_inset
+
+.
+ We use a morphology-based approach.
+ The general idea is to take advantage of the fact that we know 
+\emph on
+a priori 
+\emph default
+that the glyphs we are interested in will have certain properties:
+\end_layout
+
+\begin_layout Itemize
+they collectively take up a significant portion of the license plate area,
+\end_layout
+
+\begin_layout Itemize
+their upper and lower edges are colinear, and
+\end_layout
+
+\begin_layout Itemize
+their aspect ratio is less than 
+\begin_inset Formula $1$
+\end_inset
+
+; that is, glyphs are taller than they are wide.
+\end_layout
+
+\begin_layout Standard
+Using this knowledge, our segmentation algorithm uses a sequence of simple
+ morphological operations to first generate `candidate' cropped regions
+ of the license plate, attempt to clean them up of extraneous details (such
+ as bolts and rivets), and test them to see whether they fulfil the above
+ requirements
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+The MATLab function is found in 
+\begin_inset Formula ${\tt Code\backslash image\_partition.m}$
+\end_inset
+
+.
+\end_layout
+
+\end_inset
+
+.
+ If a suitable number of candidates makes it through the testing process,
+ we've succeeded, and we return the segmentation.
+ If not, we try again, recursively calling the partition algorithm, by first
+ inverting the colors of the plate, and then by progressively cropping the
+ plate down, if we still don't find any candidate regions.
+ 
+\end_layout
+
+\begin_layout Standard
+To generate the candidate regions, we initially take a similar approach
+ to that used in the C-Lab1 morphology exercise, in which the goal is to
+ segment lines of text from a textbook.
+ We dilate the image horizontally by a wide structuring element, and crop
+ the image to the vertical dimensions of the largest connected component
+ that results.
+ We then dilate vertically with a tall structuring element, and use connected
+ component analysis
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+We use MatLab's implementation 
+\begin_inset Formula ${\tt bwconncomp}$
+\end_inset
+
+, which uses the flood fill algorithm: http://en.wikipedia.org/wiki/Flood_fill.
+\end_layout
+
+\end_inset
+
+ on the result to segment the image into several candidate images.
+ Typical plates will have between 10-20 candidates generated by this process.
+ The vast majority are spurious candidates, and we eliminate them with numerous
+ tests that follow.
+\end_layout
+
+\begin_layout Standard
+Once we have a suitable number of candidate image regions, we progressively
+ narrow them down by applying several tests to them.
+ Let 
+\begin_inset Formula $\mathcal{C}=\left\{ C_{i}\right\} _{i=1}^{N}$
+\end_inset
+
+ be the set of candidates, and let 
+\begin_inset Formula $H\left(C_{i}\right)$
+\end_inset
+
+ and 
+\begin_inset Formula $W\left(C_{i}\right)$
+\end_inset
+
+ be the height and width of candidate region 
+\begin_inset Formula $C_{i}$
+\end_inset
+
+ respectively.
+ Then for each candidate 
+\begin_inset Formula $C_{i}$
+\end_inset
+
+ we prune it from the list if it fails any of the following tests:
+\end_layout
+
+\begin_layout Enumerate
+Is the aspect ratio 
+\begin_inset Formula $R$
+\end_inset
+
+
+\begin_inset Formula 
+\[
+R\left(C_{i}\right)=\frac{H\left(C_{i}\right)}{W\left(C_{i}\right)}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+within the interval 
+\begin_inset Formula $[1,10]$
+\end_inset
+
+?
+\end_layout
+
+\begin_layout Standard
+We choose a lower bound of 
+\begin_inset Formula $1$
+\end_inset
+
+ by the empirical observation that all glyphs in Australian license plates
+ appear to be taller than they are wide.
+ The upper bound of 
+\begin_inset Formula $10$
+\end_inset
+
+ is purely to accomodate the glyphs `
+\begin_inset Formula $1$
+\end_inset
+
+' and `
+\begin_inset Formula $I$
+\end_inset
+
+'; all other glyphs have aspect ratios roughly in the interval 
+\begin_inset Formula $\left[1,2\right]$
+\end_inset
+
+.
+ This criterion is quite useful for trimming out parts of slogans or other
+ artifacts of the morphological segmentation, since these often have aspect
+ ratios outside this interval.
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+Is the mean intensity
+\begin_inset Foot
+status collapsed
+
+\begin_layout Plain Layout
+Recall that these are binary images, so we are just counting the proportion
+ of white pixels in the candidate region.
+\end_layout
+
+\end_inset
+
+ 
+\begin_inset Formula 
+\[
+\bar{I}\left(C_{i}\right)=\frac{\sum_{j=1}^{H\left(C_{i}\right)}\sum_{k=1}^{W\left(C_{i}\right)}\left[C_{i}\right]_{jk}}{H\left(C_{i}\right)W\left(C_{i}\right)}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+in the interval 
+\begin_inset Formula $\left[0.1,0.9\right]$
+\end_inset
+
+?
+\end_layout
+
+\begin_layout Standard
+Again, we find empirically that this is a useful heuristic for removing
+ non-glyph segments.
+ For example, the `hyphen-like' separator often found between the first
+ three and last three digits of the license plate is excluded by this test,
+ since it is almost completely white.
+ 
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+Is the candidate's height within 
+\begin_inset Formula $10\%$
+\end_inset
+
+ of the mode of all passing candidates?
+\begin_inset Formula 
+\[
+\frac{H\left(C_{i}\right)-{\tt mode}\left(\mathcal{H}\right)}{{\tt mode}\left(\mathcal{H}\right)}<0.1,
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+where 
+\begin_inset Formula $\mathcal{H}=\left\{ H\left(C_{i}\right)\ |\ C_{i}\in\mathcal{C},\ C_{i}\ \text{passing}\right\} $
+\end_inset
+
+ is the set of heights of passing candidates.
+ 
+\end_layout
+
+\begin_layout Standard
+This condition is quite stringent, and takes advantage of our prior knowledge
+ that all the glyphs must be approximately the same height.
+ It gets rid of plausible-looking candidate regions which contain, for example,
+ state logos or other symbols or imagery.
+ 
+\end_layout
+
+\end_deeper
+\begin_layout Standard
+The whole segmentation pipeline is laid out in Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig-pipeline"
+
+\end_inset
+
+, with accompanying plate images to illustrate.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement h
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+usetikzlibrary{positioning}
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+tikzstyle{block} = [rectangle, draw, fill=blue!20, text width=10em, text
+ centered, rounded corners, minimum height=3em] 
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+tikzstyle{newblock} = [rectangle, draw, fill=blue!20, node distance=5cm,
+ text width=10em, text centered, rounded corners, minimum height=3em] 
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+tikzstyle{choice} = [diamond, draw, fill = blue!20, node distance=2cm, text
+ width=4em, text centered]
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+tikzstyle{line} = [draw, -latex'] 
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+tikzstyle{imgblock} = [draw, rectangle, node distance=2cm, minimum height=2em,ro
+unded corners]
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+begin{tikzpicture}[node distance = 2cm, auto]
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+    
+\backslash
+node [block] (threshold) {threshold and binarize};
+\end_layout
+
+\begin_layout Plain Layout
+
+    
+\backslash
+node [block, below of=threshold] (dilate) {dilate};
+\end_layout
+
+\begin_layout Plain Layout
+
+    
+\backslash
+node [block, below of=dilate] (candidates) {candidate regions};
+\end_layout
+
+\begin_layout Plain Layout
+
+    
+\backslash
+node [block, below of=candidates] (filter) {filter candidates};
+\end_layout
+
+\begin_layout Plain Layout
+
+	
+\backslash
+node [choice, below of=filter, aspect=2] (decision) {$|
+\backslash
+mathcal{C}|>2$?};
+\end_layout
+
+\begin_layout Plain Layout
+
+	
+\backslash
+node [block, below of=decision] (neural) {neural network};
+\end_layout
+
+\begin_layout Plain Layout
+
+	
+\backslash
+node [newblock, right of = decision] (flip) {invert colors};
+\end_layout
+
+\begin_layout Plain Layout
+
+	
+\backslash
+node [block, below of=neural] (string) {output string};
+\end_layout
+
+\begin_layout Plain Layout
+
+	
+\end_layout
+
+\begin_layout Plain Layout
+
+    
+\backslash
+path [line] (threshold) -- (dilate);
+\end_layout
+
+\begin_layout Plain Layout
+
+    
+\backslash
+path [line] (dilate) -- (candidates);
+\end_layout
+
+\begin_layout Plain Layout
+
+    
+\backslash
+path [line] (candidates) -- (filter);
+\end_layout
+
+\begin_layout Plain Layout
+
+	
+\backslash
+path [line] (filter) -- (decision);
+\end_layout
+
+\begin_layout Plain Layout
+
+	
+\backslash
+path [line] (decision) -- node [near start] {No} +(3,0) coordinate (my coord)
+ -- (flip.west);
+\end_layout
+
+\begin_layout Plain Layout
+
+    
+\backslash
+path [line] (decision.south) -- node {Yes}  +(0,-20pt)  --  (neural);
+\end_layout
+
+\begin_layout Plain Layout
+
+	
+\backslash
+path [line] (flip.north) |- (threshold);
+\end_layout
+
+\begin_layout Plain Layout
+
+	
+\backslash
+path [line] (neural) -- (string);
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+	
+\backslash
+node [imgblock, left=4cm of threshold] (cropimg) {
+\backslash
+includegraphics[height=3em,width=8em]{partitioning/img.jpg}};
+\end_layout
+
+\begin_layout Plain Layout
+
+	
+\backslash
+node [imgblock, left=4cm of dilate] (hor_dilate) {
+\backslash
+includegraphics[height=3em, width=8em]{partitioning/hor_dilate.png}};
+\end_layout
+
+\begin_layout Plain Layout
+
+	
+\backslash
+node [imgblock, left=4cm of candidates] (vert_dilate) {
+\backslash
+includegraphics[height=3em, width=8em]{partitioning/vert_dilate.png}};
+\end_layout
+
+\begin_layout Plain Layout
+
+	
+\backslash
+node [imgblock, left=4cm of filter] (candidates) {
+\backslash
+includegraphics[height=3em, width=8em]{partitioning/candidates.png}};
+\end_layout
+
+\begin_layout Plain Layout
+
+	
+\backslash
+node [imgblock, left=4.5cm of decision] (output) {
+\backslash
+includegraphics[height=3em, width=8em]{partitioning/output.png}};
+\end_layout
+
+\begin_layout Plain Layout
+
+	
+\backslash
+node [rectangle, draw, fill=white!20, text width=8em, text centered, rounded
+ corners, minimum height=3em, left=4cm of string] (strout) {YGL22B};
+\end_layout
+
+\begin_layout Plain Layout
+
+	
+\end_layout
+
+\begin_layout Plain Layout
+
+	
+\backslash
+path [line] (cropimg) -- (hor_dilate);
+\end_layout
+
+\begin_layout Plain Layout
+
+	
+\backslash
+path [line] (hor_dilate) -- (vert_dilate);
+\end_layout
+
+\begin_layout Plain Layout
+
+	
+\backslash
+path [line] (vert_dilate) -- (candidates);
+\end_layout
+
+\begin_layout Plain Layout
+
+	
+\backslash
+path [line] (candidates) -- (output);
+\end_layout
+
+\begin_layout Plain Layout
+
+	
+\backslash
+path [line] (output) -- (strout);
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+end{tikzpicture}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig-pipeline"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\series bold
+Right: 
+\series default
+License plate recognition pipeline.
+ 
+\series bold
+Left: 
+\series default
+Example of the morphological segmentation process.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Neural Network training
+\end_layout
+
+\begin_layout Standard
+We train a single hidden layer neural network on a dataset of over 36,000
+ images of computer fonts, taken from the Chars74K dataset
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+This can be found at http://www.ee.surrey.ac.uk/CVSSP/demos/chars74k/.
+\end_layout
+
+\end_inset
+
+.
+ We take as inputs 
+\begin_inset Formula $32\times32$
+\end_inset
+
+ pixel square binary images, which correspond to input vectors of length
+ 
+\begin_inset Formula $1024$
+\end_inset
+
+; The neural network architecture used is illustrated in Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig-nn-architecture"
+
+\end_inset
+
+.
+ We experimented with different feature representations, including integral
+ representations such as the Radon transform
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+http://en.wikipedia.org/wiki/Radon_transform.
+\end_layout
+
+\end_inset
+
+, but found little to no improvement in performance.
+ We use the 1-of-
+\begin_inset Formula $K$
+\end_inset
+
+ encoding to represent our output vectors, which has 
+\begin_inset Formula $36$
+\end_inset
+
+ classes (
+\begin_inset Formula $26$
+\end_inset
+
+ alphabetical, and 
+\begin_inset Formula $10$
+\end_inset
+
+ numerical glyphs).
+ We also use the cross entropy loss function
+\begin_inset Formula 
+\[
+E\left(y,t\right)=-t\log y-(1-t)\log(1-y).
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+We use an 
+\begin_inset Formula $l_{2}$
+\end_inset
+
+ regularizer on the weights, and let MATLab randomly divide the training
+ set into training, test, and validation sets to avoid overfitting.
+ We train for 76 iterations of scaled conjugate gradient descent
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+http://en.wikipedia.org/wiki/Conjugate_gradient_method.
+\end_layout
+
+\end_inset
+
+, which takes 7 minutes on a 2.3 GHz i5 Macbook Pro with 16GB of memory.
+ The mean cross-entropy error on the training set with the learned weights
+ is 
+\begin_inset Formula $10^{-3}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename Figures/neuralnet.png
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig-nn-architecture"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Architecture of our feedforward neural network.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Implementation and experimental results
+\end_layout
+
+\begin_layout Standard
+The system is implemented with MATLab scripts and functions, which we include
+ in the 
+\begin_inset Formula ${\tt Code}$
+\end_inset
+
+ directory.
+ The main segmentation work is done by 
+\begin_inset Formula ${\tt image\_partition}$
+\end_inset
+
+, with calls to a helper function 
+\begin_inset Formula ${\tt tallestcomponent}$
+\end_inset
+
+.
+ The neural network is trained beforehand, and is stored in a 
+\begin_inset Formula ${\tt .mat}$
+\end_inset
+
+ file for ease of retrieval and re-use.
+ The 
+\begin_inset Formula ${\tt classify}$
+\end_inset
+
+ function performs the license plate segmentation and recognition.
+ See Appendix 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "sec:How-to-run"
+
+\end_inset
+
+ for details on how to run the system.
+ 
+\end_layout
+
+\begin_layout Standard
+We tested the system on 70 cropped Australian license plate images taken
+ from Wikipedia
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+http://en.wikipedia.org/wiki/Vehicle_registration_plates_of_Australia.
+\end_layout
+
+\end_inset
+
+ and Plateshack
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+http://www.plateshack.com/y2k/.
+\end_layout
+
+\end_inset
+
+.
+ Some sample plates with their segmentations are shown in Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig-samples"
+
+\end_inset
+
+.
+ On this test dataset, we achieved 
+\begin_inset Formula $94.9\%$
+\end_inset
+
+ glyph recognition accuracy, and 
+\begin_inset Formula $74.3\%$
+\end_inset
+
+ overall plate accuracy
+\begin_inset Foot
+status collapsed
+
+\begin_layout Plain Layout
+Note that we take 
+\begin_inset Quotes eld
+\end_inset
+
+O
+\begin_inset Quotes erd
+\end_inset
+
+ to be equivalent to 
+\begin_inset Quotes eld
+\end_inset
+
+0
+\begin_inset Quotes erd
+\end_inset
+
+, and 
+\begin_inset Quotes eld
+\end_inset
+
+1
+\begin_inset Quotes erd
+\end_inset
+
+ to be equivalent to 
+\begin_inset Quotes eld
+\end_inset
+
+I
+\begin_inset Quotes erd
+\end_inset
+
+.
+ This is common prctice, as in many US states, authorities do not distinguish
+ between these glyphs.
+\end_layout
+
+\end_inset
+
+.
+ Note that the system makes no distinction between plates from different
+ states; the same algorithm is used for segmentation and recognition for
+ all license plates.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement H
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename Figures/76ALI.png
+	lyxscale 50
+	scale 50
+
+\end_inset
+
+
+\begin_inset Formula $\qquad$
+\end_inset
+
+
+\begin_inset Graphics
+	filename Figures/5371B.png
+	lyxscale 50
+	scale 50
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+(a)
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+(b)
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename Figures/CP8901.png
+	lyxscale 50
+	width 7cm
+	height 3.5cm
+
+\end_inset
+
+
+\begin_inset Formula $\qquad$
+\end_inset
+
+
+\begin_inset Graphics
+	filename Figures/NXM73L.png
+	lyxscale 50
+	scale 50
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+(c)
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+(d)
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename Figures/Y2KBUG.png
+	lyxscale 50
+	scale 50
+
+\end_inset
+
+
+\begin_inset Formula $\qquad$
+\end_inset
+
+
+\begin_inset Graphics
+	filename Figures/YGA43C.png
+	lyxscale 50
+	scale 50
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+(e)
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+
+\begin_inset space \quad{}
+\end_inset
+
+(f)
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig-samples"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Six license plate examples, accompanied by their segmentations.
+ Note that these plates present numerous challenges, including: large non-glyph
+ graphics in 
+\series bold
+(a) 
+\series default
+and 
+\series bold
+(b)
+\series default
+; uneven lighting and contrast in 
+\series bold
+(e)
+\series default
+; unusual glyph spacing in 
+\series bold
+(d)
+\series default
+.
+ Note also the varying background and foreground colours, and the varying
+ fonts used.
+ These plates are all correctly segmented and recognised by the system.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Conclusions
+\end_layout
+
+\begin_layout Standard
+Below we discuss the performance of the system, and propose numerous improvement
+s.
+ We also outline some of the learning outcomes from the project.
+\end_layout
+
+\begin_layout Subsection
+Limitations and possible extensions
+\end_layout
+
+\begin_layout Standard
+The system has two main limitations: the plate segmentation algorithm assumes
+ that we are already given a cropped license plate image.
+ Adding a plate localization routine could address this issue, but it is
+ outside the scope of the project.
+ We'll focus on our attention on the second issue, which relates to the
+ performance of the neural network.
+\end_layout
+
+\begin_layout Standard
+The single-glyph recognition rate of 
+\begin_inset Formula $94.9\%$
+\end_inset
+
+ achieved by the neural network is reasonably high, but compounding this
+ over a mean plate length of six glyphs yields around the 
+\begin_inset Formula $75\%$
+\end_inset
+
+ plate accuracy that we achieved.
+ If we require a 
+\begin_inset Formula $95\%$
+\end_inset
+
+ plate recognition accuracy, this requires an accuracy of 
+\begin_inset Formula $0.95^{\nicefrac{1}{6}}\approx99\%$
+\end_inset
+
+ glyph accuracy.
+ To achieve this level of accuracy in the neural network, there are a few
+ possible approaches:
+\end_layout
+
+\begin_layout Itemize
+Train the neural network on labelled license plates.
+ This has the advantage of showing the neural network examples of the fonts
+ used in the license plates, including the noise associated with the images.
+ This should address the issue we see in Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "sb77hw"
+
+\end_inset
+
+(a).
+ The disadvantage is that this would require a large database of labelled
+ Australian license plates images, which is not easily available, to the
+ author's knowledge.
+\end_layout
+
+\begin_layout Itemize
+Use more advanced features such as line/loop feature detectors used in Cuneiform
+ and Tesseract
+\begin_inset CommandInset citation
+LatexCommand cite
+key "smith-07"
+
+\end_inset
+
+, or using SIFT 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Kae-09"
+
+\end_inset
+
+.
+ We could augment the pixel representation with other global features, such
+ as topological invariants
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+http://en.wikipedia.org/wiki/Topological_property.
+\end_layout
+
+\end_inset
+
+, or other characteristics.
+ Feature engineering such as this would probably help to disambiguate similar
+ characters such as 'G' and '6', which are commonly misclassified by my
+ system (see Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "sb77hw"
+
+\end_inset
+
+(b)).
+\end_layout
+
+\begin_layout Itemize
+Use a state-of-the-art Convolutional Neural Network classifier, or a boosted
+ classifier
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+Using an algorithm such as AdaBoost.
+\end_layout
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename Figures/SB77HW.png
+	lyxscale 70
+	scale 50
+
+\end_inset
+
+
+\begin_inset Formula $\quad$
+\end_inset
+
+
+\begin_inset Graphics
+	filename Figures/YGL22B.png
+	lyxscale 70
+	scale 50
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "sb77hw"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\series bold
+Left: 
+\series default
+The input plate is `SB77HW', but the system classifies it as as `SB77HN'.
+ This is symptomatic of the difficulties presented by the unusual, compressed
+ fonts used in license plates.
+ 
+\series bold
+Right: 
+\series default
+The input plate is clearly `YGL22B', but the system classifies it as 'Y6L22B'.
+ This misclassification could possibly be improved by including extra features
+ such as closed loop detectors, or computing how many disconnected regions
+ there are.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Learning outcomes
+\end_layout
+
+\begin_layout Standard
+In the process of doing this project, I learned a number of things:
+\end_layout
+
+\begin_layout Itemize
+I discovered and evaluated different solutions to the license plate recognition
+ problem by performing a review of the international computer vision literature.
+ 
+\end_layout
+
+\begin_layout Itemize
+I followed test-driven engineering principles, by implementing a test harness
+ for the system, and subsequently making incremental changes to the system
+ in an attempt to improve the test results.
+\end_layout
+
+\begin_layout Itemize
+I trained a neural network on a large dataset and explored different feature
+ representations.
+\end_layout
+
+\begin_layout Itemize
+I experimented with numerous image processing techniques and became familiar
+ with their implementations and uses.
+\end_layout
+
+\begin_layout Section
+\start_of_appendix
+How to run the Matlab code
+\begin_inset CommandInset label
+LatexCommand label
+name "sec:How-to-run"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The code is stored in the 
+\begin_inset Formula ${\tt Code}$
+\end_inset
+
+ directory; this directory will have to be added to your MATLab path.
+ The main top level method is 
+\begin_inset Formula ${\tt classify}$
+\end_inset
+
+, which takes as inputs a neural net, and an RGB image.
+ A neural net is saved in 
+\begin_inset Formula ${\tt Data/net.mat}$
+\end_inset
+
+.
+ Load this into the main namespace with 
+\begin_inset Formula ${\tt load('Data/net.mat')}$
+\end_inset
+
+.
+ Then, you can call 
+\begin_inset Formula ${\tt classify(im,net)}$
+\end_inset
+
+, where 
+\begin_inset Formula ${\tt im}$
+\end_inset
+
+ is a 
+\begin_inset Formula $M\times N\times3$
+\end_inset
+
+ array of unsigned 
+\begin_inset Formula $8$
+\end_inset
+
+-bit integers, of the kind returned by 
+\begin_inset Formula ${\tt imread}.$
+\end_inset
+
+ Alternatively, you can  call the 
+\begin_inset Formula ${\tt demo()}$
+\end_inset
+
+ function which will automatically run through the 70 plates included, showing
+ the original, the segmentation, and printing the recognised output to the
+ MATLab console.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset bibtex
+LatexCommand bibtex
+bibfiles "bib"
+options "unsrt"
+
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document
